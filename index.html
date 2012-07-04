@@ -33,7 +33,7 @@
       <section id="main_content" class="inner">
         <h1>RDF::RDFa reader/writer</h1>
 
-<p><a href="http://www.w3.org/TR/2012/PR-rdfa-core-20120508/" title="RDFa 1.1 Core">RDFa</a> parser for RDF.rb.</p>
+<p><a href="http://www.w3.org/TR/2012/REC-rdfa-core-20120607/" title="RDFa 1.1 Core">RDFa</a> parser for RDF.rb.</p>
 
 <h2>DESCRIPTION</h2>
 
@@ -41,7 +41,7 @@
 
 <h2>FEATURES</h2>
 
-<p>RDF::RDFa parses <a href="http://www.w3.org/TR/2012/PR-rdfa-core-20120508/" title="RDFa 1.1 Core">RDFa</a> into statements or triples.</p>
+<p>RDF::RDFa parses <a href="http://www.w3.org/TR/2012/REC-rdfa-core-20120607/" title="RDFa 1.1 Core">RDFa</a> into statements or triples.</p>
 
 <ul>
 <li>Fully compliant RDFa 1.1 parser.</li>
@@ -63,7 +63,7 @@ with Microdata. As a result, the RDF Webapps working group is currently looking 
 
 <h4>RDFa 1.1 Lite</h4>
 
-<p>This version fully supports the limited syntax of <a href="http://www.w3.org/TR/2012/PR-rdfa-lite-20120508/" title="RDFa Lite 1.1">RDFa Lite 1.1</a>. This includes the ability to use
+<p>This version fully supports the limited syntax of <a href="http://www.w3.org/TR/2012/REC-rdfa-lite-20120607/" title="RDFa Lite 1.1">RDFa Lite 1.1</a>. This includes the ability to use
 <a href="https://github.com/property" class="user-mention">@property</a> exclusively.</p>
 
 <h4>Remove RDFa Profiles</h4>
@@ -168,12 +168,13 @@ to the output graph.</p>
 
 <p>For example:</p>
 
-<p></p> 
-    <p>Gregg Kellogg
-    <a rel="knows" href="http://manu.sporny.org/#this">
-      Manu Sporny
-    </a>
-  </p> 
+<pre><code>&lt;div typeof="foaf:Person" about="http://greggkellogg.net/foaf#me"&gt;
+  &lt;p property="name"&gt;Gregg Kellogg&lt;/span&gt;
+  &lt;a rel="knows" typeof="foaf:Person" href="http://manu.sporny.org/#this"&gt;
+    &lt;span property="name"&gt;Manu Sporny&lt;/span&gt;
+  &lt;/a&gt;
+&lt;/div&gt;
+</code></pre>
 
 <p>results in</p>
 
@@ -221,6 +222,90 @@ This is related to <a href="http://www.w3.org/2010/02/rdfa/track/issues/97">RDFa
 
 <p>The <code>data</code> element is described in the WHATWG version of the <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/text-level-semantics.html#the-data-element">HTML5 spec</a>.
 This is related to <a href="http://www.w3.org/2010/02/rdfa/track/issues/113">RDFa ISSUE-113</a></p>
+
+<h3>Support for embedded RDF/XML</h3>
+
+<p>If the document includes embedded RDF/XML, as is the case with many SVG documents, and the RDF::RDFXML gem is installed, the reader will add extracted triples to the default graph.</p>
+
+<p>For example:</p>
+
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;svg width="12cm" height="4cm" viewBox="0 0 1200 400"
+    xmlns:dc="http://purl.org/dc/terms/"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xml:base="http://example.net/"
+    xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny"&gt;
+  &lt;desc property="dc:description"&gt;A yellow rectangle with sharp corners.&lt;/desc&gt;
+  &lt;metadata&gt;
+    &lt;rdf:RDF&gt;
+      &lt;rdf:Description rdf:about=""&gt;
+        &lt;dc:title&gt;Test 0304&lt;/dc:title&gt;
+      &lt;/rdf:Description&gt;
+    &lt;/rdf:RDF&gt;
+  &lt;/metadata&gt;
+  &lt;!-- Show outline of canvas using 'rect' element --&gt;
+  &lt;rect x="1" y="1" width="1198" height="398"
+        fill="none" stroke="blue" stroke-width="2"/&gt;
+  &lt;rect x="400" y="100" width="400" height="200"
+        fill="yellow" stroke="navy" stroke-width="10"  /&gt;
+&lt;/svg&gt;
+</code></pre>
+
+<p>generates the following turtle:</p>
+
+<pre><code>@prefix dc: &lt;http://purl.org/dc/terms/&gt; .
+
+&lt;http://example.net/&gt; dc:title "Test 0304" ;
+  dc:description "A yellow rectangle with sharp corners." .
+</code></pre>
+
+<h3>Support for embedded N-Triples or Turtle</h3>
+
+<p>If the document includes a <code>&amp;lt;script&amp;gt;</code> element having an <code>@type</code> attribute whose value matches that of a loaded RDF reader (text/ntriples and text/turtle are loaded if they are availble), the data will be extracted and added to the default graph. For example:</p>
+
+<pre><code>&lt;html&gt;
+  &lt;body&gt;
+    &lt;script type="text/turtle"&gt;&lt;![CDATA[
+       @prefix foo:  &lt;http://www.example.com/xyz#&gt; .
+       @prefix gr:   &lt;http://purl.org/goodrelations/v1#&gt; .
+       @prefix xsd:  &lt;http://www.w3.org/2001/XMLSchema#&gt; .
+       @prefix rdfs: &lt;http://www.w3.org/2000/01/rdf-schema#&gt; .
+
+       foo:myCompany
+         a gr:BusinessEntity ;
+         rdfs:seeAlso &lt;http://www.example.com/xyz&gt; ;
+         gr:hasLegalName "Hepp Industries Ltd."^^xsd:string .
+    ]]&gt;&lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+
+<p>generates the following Turtle:</p>
+
+<p><a href="https://github.com/PreFix" class="user-mention">@PreFix</a> foo:  <a href="http://www.example.com/xyz#">http://www.example.com/xyz#</a> .
+   <a href="https://github.com/PreFix" class="user-mention">@PreFix</a> gr:   <a href="http://purl.org/goodrelations/v1#">http://purl.org/goodrelations/v1#</a> .
+   <a href="https://github.com/PreFix" class="user-mention">@PreFix</a> xsd:  <a href="http://www.w3.org/2001/XMLSchema#">http://www.w3.org/2001/XMLSchema#</a> .
+   <a href="https://github.com/PreFix" class="user-mention">@PreFix</a> rdfs: <a href="http://www.w3.org/2000/01/rdf-schema#">http://www.w3.org/2000/01/rdf-schema#</a> .</p>
+
+<p>foo:myCompany
+     a gr:BusinessEntity ;
+     rdfs:seeAlso <a href="http://www.example.com/xyz">http://www.example.com/xyz</a> ;
+     gr:hasLegalName "Hepp Industries Ltd."^^xsd:string .</p>
+
+<h3>Support for Role Attribute</h3>
+
+<p>The processor will generate RDF triples consistent with the <a href="http://www.w3.org/TR/role-attribute/" title="Role Attribute">Role Attr</a> specification.</p>
+
+<pre><code>&lt;div id="heading1" role="heading"&gt;
+  &lt;p&gt;Some contents that are a header&lt;/p&gt;
+&lt;/div&gt;
+</code></pre>
+
+<p>generates the following Turtle:</p>
+
+<pre><code>@prefix xhv: &lt;http://www.w3.org/1999/xhtml/vocab#&gt; .
+&lt;#heading1&gt; xhv:role xhv:heading.
+</code></pre>
 
 <h2>Usage</h2>
 
@@ -459,8 +544,8 @@ Asserts :svg format, image/svg+xml mime-type and .svg file extension.</li>
 <li><a href="http://rdf.greggkellogg.net/distiller">Distiller</a></li>
 <li><a href="http://rubydoc.info/github/ruby-rdf/rdf-rdfa/frames">Documentation</a></li>
 <li>[History]{file:History.markdown}</li>
-<li><a href="http://www.w3.org/TR/2012/PR-rdfa-core-20120508/" title="RDFa 1.1 Core">RDFa 1.1 Core</a></li>
-<li><a href="http://www.w3.org/TR/2012/PR-xhtml-rdfa-20120508/" title="XHTML+RDFa 1.1">XHTML+RDFa 1.1</a></li>
+<li><a href="http://www.w3.org/TR/2012/REC-rdfa-core-20120607/" title="RDFa 1.1 Core">RDFa 1.1 Core</a></li>
+<li><a href="http://www.w3.org/TR/2012/REC-xhtml-rdfa-20120607/" title="XHTML+RDFa 1.1">XHTML+RDFa 1.1</a></li>
 <li><a href="http://rdfa.info/test-suite/" title="RDFa test suite">RDFa-test-suite</a></li>
 </ul><h2>Author</h2>
 
