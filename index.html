@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Rdf-rdfa : Ruby RDFa reader/writer for RDF.rb." />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Rdf-rdfa</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/ruby-rdf/rdf-rdfa">View on GitHub</a>
+
+          <h1 id="project_title">Rdf-rdfa</h1>
+          <h2 id="project_tagline">Ruby RDFa reader/writer for RDF.rb.</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/ruby-rdf/rdf-rdfa/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/ruby-rdf/rdf-rdfa/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1>RDF::RDFa reader/writer</h1>
+
+<p><a href="http://www.w3.org/TR/2012/REC-rdfa-core-20120607/" title="RDFa 1.1 Core">RDFa</a> parser for RDF.rb.</p>
+
+<h2>DESCRIPTION</h2>
+
+<p>RDF::RDFa is an RDFa reader and writer for Ruby using the <a href="http://rubygems.org/gems/rdf">RDF.rb</a> library suite.</p>
+
+<h2>FEATURES</h2>
+
+<p>RDF::RDFa parses <a href="http://www.w3.org/TR/2012/REC-rdfa-core-20120607/" title="RDFa 1.1 Core">RDFa</a> into statements or triples.</p>
+
+<ul>
+<li>Fully compliant RDFa 1.1 parser.</li>
+<li>Template-based Writer to generate XHTML+RDFa.
+
+<ul>
+<li>Writer uses user-replacable <a href="http://haml-lang.com/">Haml</a>-based templates to generate RDFa.</li>
+</ul>
+</li>
+<li>If available, Uses Nokogiri for parsing HTML/SVG, falls back to REXML otherwise (and for JRuby)</li>
+<li>
+<a href="http://rdfa.info/test-suite/" title="RDFa test suite">RDFa tests</a> use SPARQL for most tests due to Rasqal limitations. Other tests compare directly against N-triples.</li>
+</ul><p>Install with 'gem install rdf-rdfa'</p>
+
+<h3>Important changes from previous versions</h3>
+
+<p>RDFa is an evolving standard, undergoing some substantial recent changes partly due to perceived competition
+with Microdata. As a result, the RDF Webapps working group is currently looking at changes in the processing model for RDFa. These changes are now being tracked in {RDF::RDFa::Reader}:</p>
+
+<h4>RDFa 1.1 Lite</h4>
+
+<p>This version fully supports the limited syntax of <a href="http://www.w3.org/TR/2012/REC-rdfa-lite-20120607/" title="RDFa Lite 1.1">RDFa Lite 1.1</a>. This includes the ability to use
+<a href="https://github.com/property" class="user-mention">@property</a> exclusively.</p>
+
+<h4>Remove RDFa Profiles</h4>
+
+<p>RDFa Profiles were a mechanism added to allow groups of terms and prefixes to be defined in an external resource and loaded to affect the processing of an RDFa document. This introduced a problem for some implementations needing to perform a cross-origin GET in order to retrieve the profiles. The working group elected to drop support for user-defined RDFa Profiles (the default profiles defined by RDFa Core and host languages still apply) and replace it with an inference regime using vocabularies. Parsing of <a href="https://github.com/profile" class="user-mention">@profile</a> has been removed from this version.</p>
+
+<h4>Vocabulary Expansion</h4>
+
+<p>One of the issues with vocabularies was that they discourage re-use of existing vocabularies when terms from several vocabularies are used at the same time. As it is common (encouraged) for RDF vocabularies to form sub-class and/or sub-property relationships with well defined vocabularies, the RDFa vocabulary expansion mechanism takes advantage of this.</p>
+
+<p>As an optional part of RDFa processing, an RDFa processor will perform limited
+<a href="http://www.w3.org/TR/2009/REC-owl2-profiles-20091027/#Reasoning_in_OWL_2_RL_and_RDF_Graphs_using_Rules">OWL 2 RL Profile entailment</a>,
+specifically rules prp-eqp1, prp-eqp2, cax-sco, cax-eqc1, and
+cax-eqc2. This causes sub-classes and sub-properties of type and property IRIs to be added
+to the output graph.</p>
+
+<p>{RDF::RDFa::Reader} implements this using the <code>#expand</code> method, which looks for <code>rdfa:usesVocabulary</code> properties within the output graph and performs such expansion. See an example in the usage section.</p>
+
+<h4>RDF Collections (lists)</h4>
+
+<p>One significant RDF feature missing from RDFa was support for ordered collections, or lists. RDF supports this with special properties <code>rdf:first</code>, <code>rdf:rest</code>, and <code>rdf:nil</code>, but other RDF languages have first-class support for this concept. For example, in <a href="http://www.w3.org/TR/2011/WD-turtle-20110809/">Turtle</a>, a list can be defined as follows:</p>
+
+<pre><code>[ a schema:MusicPlayList;
+  schema:name "Classic Rock Playlist";
+  schema:numTracks 5;
+  schema:tracks (
+    [ a schema:MusicRecording; schema:name "Sweet Home Alabama";       schema:byArtist "Lynard Skynard"]
+    [ a schema:MusicRecording; schema:name "Shook you all Night Long"; schema:byArtist "AC/DC"]
+    [ a schema:MusicRecording; schema:name "Sharp Dressed Man";        schema:byArtist "ZZ Top"]
+    [ a schema:MusicRecording; schema:name "Old Time Rock and Roll";   schema:byArtist "Bob Seger"]
+    [ a schema:MusicRecording; schema:name "Hurt So Good";             schema:byArtist "John Cougar"]
+  )
+]
+</code></pre>
+
+<p>defines a playlist with an ordered set of tracks. RDFa adds the @inlist attribute, which is used to identify values (object or literal) that are to be placed in a list. The same playlist might be defined in RDFa as follows:</p>
+
+<pre><code>&lt;div vocab="http://schema.org/" typeof="MusicPlaylist"&gt;
+  &lt;span property="name"&gt;Classic Rock Playlist&lt;/span&gt;
+  &lt;meta property="numTracks" content="5"/&gt;
+
+  &lt;div rel="tracks" inlist=""&gt;
+    &lt;div typeof="MusicRecording"&gt;
+      1.&lt;span property="name"&gt;Sweet Home Alabama&lt;/span&gt; -
+      &lt;span property="byArtist"&gt;Lynard Skynard&lt;/span&gt;
+     &lt;/div&gt;
+
+    &lt;div typeof="MusicRecording"&gt;
+      2.&lt;span property="name"&gt;Shook you all Night Long&lt;/span&gt; -
+      &lt;span property="byArtist"&gt;AC/DC&lt;/span&gt;
+    &lt;/div&gt;
+
+    &lt;div typeof="MusicRecording"&gt;
+      3.&lt;span property="name"&gt;Sharp Dressed Man&lt;/span&gt; -
+      &lt;span property="byArtist"&gt;ZZ Top&lt;/span&gt;
+    &lt;/div&gt;
+
+    &lt;div typeof="MusicRecording"&gt;
+      4.&lt;span property="name"&gt;Old Time Rock and Roll&lt;/span&gt;
+      &lt;span property="byArtist"&gt;Bob Seger&lt;/span&gt;
+    &lt;/div&gt;
+
+    &lt;div typeof="MusicRecording"&gt;
+      5.&lt;span property="name"&gt;Hurt So Good&lt;/span&gt;
+      &lt;span property="byArtist"&gt;John Cougar&lt;/span&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</code></pre>
+
+<p>This basically does the same thing, but places each track in an rdf:List in the defined order.</p>
+
+<h4>Property relations</h4>
+
+<p>The <a href="https://github.com/property" class="user-mention">@property</a> attribute has been updated to allow for creating URI references as well as object literals.</p>
+
+<ol>
+<li>If an element contains <a href="https://github.com/property" class="user-mention">@property</a> but no <a href="https://github.com/rel" class="user-mention">@rel</a>, @datatype or <a href="https://github.com/content" class="user-mention">@content</a> and it contains a resource attribute (such as <a href="https://github.com/href" class="user-mention">@href</a>, <a href="https://github.com/src" class="user-mention">@src</a>, or <a href="https://github.com/Resource" class="user-mention">@Resource</a>)
+
+<ol>
+<li>Generate an IRI object. Furthermore, sub-elements do not chain, i.e., the subject in effect when the <a href="https://github.com/property" class="user-mention">@property</a> is processed is also in effect for sub-elements.</li>
+<li>Otherwise, generate a literal as before.</li>
+</ol>
+</li>
+</ol><p>For example:</p>
+
+<pre><code>&lt;a vocab="http://schema.org" property="url" href="http://example.com"&gt;
+  &lt;span property="title"&gt;NBA Eastern Conference ...&lt;/span&gt;
+&lt;/a&gt;
+</code></pre>
+
+<p>results in</p>
+
+<pre><code>&lt;&gt; schema:url &lt;http://example.com&gt;;
+   schema:title "NBA Eastern Conference".
+</code></pre>
+
+<h4>Magnetic @about/<a href="https://github.com/typeof" class="user-mention">@typeof</a>
+</h4>
+
+<p>The <a href="https://github.com/typeof" class="user-mention">@typeof</a> attribute has changed; previously, it always created a new subject, either using a resource from @about, <a href="https://github.com/Resource" class="user-mention">@Resource</a> and so forth. This has long been a source of errors for people using RDFa. The new rules cause <a href="https://github.com/typeof" class="user-mention">@typeof</a> to bind to a subject if used with @about, otherwise, to an object, if either used alone, or in combination with some other resource attribute (such as <a href="https://github.com/href" class="user-mention">@href</a>, <a href="https://github.com/src" class="user-mention">@src</a> or <a href="https://github.com/Resource" class="user-mention">@Resource</a>).</p>
+
+<p>For example:</p>
+
+<pre><code>&lt;div typeof="foaf:Person" about="http://greggkellogg.net/foaf#me"&gt;
+  &lt;p property="name"&gt;Gregg Kellogg&lt;/span&gt;
+  &lt;a rel="knows" typeof="foaf:Person" href="http://manu.sporny.org/#this"&gt;
+    &lt;span property="name"&gt;Manu Sporny&lt;/span&gt;
+  &lt;/a&gt;
+&lt;/div&gt;
+</code></pre>
+
+<p>results in</p>
+
+<pre><code>&lt;http://greggkellogg.net/foaf#me&gt; a foaf:Person;
+  foaf:name "Gregg Kellogg";
+  foaf:knows &lt;http://manu.sporny.org/#this&gt; .
+&lt;http://manu.sporny.org/#this&gt; a foaf:Person;
+  foaf:name "Manu Sporny" .
+</code></pre>
+
+<p>Note that if the explicit <a href="https://github.com/href" class="user-mention">@href</a> is not present, i.e.,</p>
+
+<pre><code>&lt;div typeof="foaf:Person" about="http://greggkellogg.net/foaf#me"&gt;
+  &lt;p property="name"&gt;Gregg Kellogg&lt;/span&gt;
+  &lt;a href="knows" typeof="foaf:Person"&gt;
+    &lt;span property="name"&gt;Manu Sporny&lt;/span&gt;
+  &lt;/a&gt;
+&lt;/div&gt;
+</code></pre>
+
+<p>this results in</p>
+
+<pre><code>&lt;http://greggkellogg.net/foaf#me&gt; a foaf:Person;
+  foaf:name "Gregg Kellogg";
+  foaf:knows [ 
+        a foaf:Person;
+        foaf:name "Manu Sporny" 
+  ].
+</code></pre>
+
+<h4>Property chaining</h4>
+
+<p>If used without <a href="https://github.com/rel" class="user-mention">@rel</a>, but with <a href="https://github.com/typeof" class="user-mention">@typeof</a> and a resource attribute, <a href="https://github.com/property" class="user-mention">@property</a> will cause chaining to another object just like <a href="https://github.com/rel" class="user-mention">@rel</a>. The effect of this and other changes is to allow pretty much all RDFa to be marked up using just <a href="https://github.com/property" class="user-mention">@property</a>; @rel/<a href="https://github.com/rev" class="user-mention">@rev</a> is no longer required. Although, <a href="https://github.com/rel" class="user-mention">@rel</a> and <a href="https://github.com/rev" class="user-mention">@rev</a> have useful features that <a href="https://github.com/property" class="user-mention">@property</a> does not, so it's worth keeping them in your toolkit.</p>
+
+<h4>Support for HTML5 <code>time</code> element</h4>
+
+<p>The <code>time</code> element allows the creation of a datatyped-literal based on the lexical scope of either the <code>@datetime</code> attribute, or the element content. We parse it according to xsd:date, xsd:time, xsd:dateTime, xsd:gYear, xsd:gYearMonth, and xsd:duration. If it matches none of these, a plain literal is emitted.</p>
+
+<p>The <code>time</code> element is described in the WHATWG version of the <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/text-level-semantics.html#the-time-element">HTML5 spec</a>.
+This is related to <a href="http://www.w3.org/2010/02/rdfa/track/issues/97">RDFa ISSUE-97</a>.</p>
+
+<h4>Support for HTML5 <code>data</code> element</h4>
+
+<p>This is an alternate way of adding data using the <code>@value</code> property. Similar to <code>meta</code></p>
+
+<p>The <code>data</code> element is described in the WHATWG version of the <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/text-level-semantics.html#the-data-element">HTML5 spec</a>.
+This is related to <a href="http://www.w3.org/2010/02/rdfa/track/issues/113">RDFa ISSUE-113</a></p>
+
+<h3>Support for embedded RDF/XML</h3>
+
+<p>If the document includes embedded RDF/XML, as is the case with many SVG documents, and the RDF::RDFXML gem is installed, the reader will add extracted triples to the default graph.</p>
+
+<p>For example:</p>
+
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;svg width="12cm" height="4cm" viewBox="0 0 1200 400"
+    xmlns:dc="http://purl.org/dc/terms/"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xml:base="http://example.net/"
+    xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny"&gt;
+  &lt;desc property="dc:description"&gt;A yellow rectangle with sharp corners.&lt;/desc&gt;
+  &lt;metadata&gt;
+    &lt;rdf:RDF&gt;
+      &lt;rdf:Description rdf:about=""&gt;
+        &lt;dc:title&gt;Test 0304&lt;/dc:title&gt;
+      &lt;/rdf:Description&gt;
+    &lt;/rdf:RDF&gt;
+  &lt;/metadata&gt;
+  &lt;!-- Show outline of canvas using 'rect' element --&gt;
+  &lt;rect x="1" y="1" width="1198" height="398"
+        fill="none" stroke="blue" stroke-width="2"/&gt;
+  &lt;rect x="400" y="100" width="400" height="200"
+        fill="yellow" stroke="navy" stroke-width="10"  /&gt;
+&lt;/svg&gt;
+</code></pre>
+
+<p>generates the following turtle:</p>
+
+<pre><code>@prefix dc: &lt;http://purl.org/dc/terms/&gt; .
+
+&lt;http://example.net/&gt; dc:title "Test 0304" ;
+  dc:description "A yellow rectangle with sharp corners." .
+</code></pre>
+
+<h3>Support for embedded N-Triples or Turtle</h3>
+
+<p>If the document includes a <code>&amp;lt;script&amp;gt;</code> element having an <code>@type</code> attribute whose value matches that of a loaded RDF reader (text/ntriples and text/turtle are loaded if they are availble), the data will be extracted and added to the default graph. For example:</p>
+
+<pre><code>&lt;html&gt;
+  &lt;body&gt;
+    &lt;script type="text/turtle"&gt;&lt;![CDATA[
+       @prefix foo:  &lt;http://www.example.com/xyz#&gt; .
+       @prefix gr:   &lt;http://purl.org/goodrelations/v1#&gt; .
+       @prefix xsd:  &lt;http://www.w3.org/2001/XMLSchema#&gt; .
+       @prefix rdfs: &lt;http://www.w3.org/2000/01/rdf-schema#&gt; .
+
+       foo:myCompany
+         a gr:BusinessEntity ;
+         rdfs:seeAlso &lt;http://www.example.com/xyz&gt; ;
+         gr:hasLegalName "Hepp Industries Ltd."^^xsd:string .
+    ]]&gt;&lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+
+<p>generates the following Turtle:</p>
+
+<p><a href="https://github.com/PreFix" class="user-mention">@PreFix</a> foo:  <a href="http://www.example.com/xyz#">http://www.example.com/xyz#</a> .
+   <a href="https://github.com/PreFix" class="user-mention">@PreFix</a> gr:   <a href="http://purl.org/goodrelations/v1#">http://purl.org/goodrelations/v1#</a> .
+   <a href="https://github.com/PreFix" class="user-mention">@PreFix</a> xsd:  <a href="http://www.w3.org/2001/XMLSchema#">http://www.w3.org/2001/XMLSchema#</a> .
+   <a href="https://github.com/PreFix" class="user-mention">@PreFix</a> rdfs: <a href="http://www.w3.org/2000/01/rdf-schema#">http://www.w3.org/2000/01/rdf-schema#</a> .</p>
+
+<p>foo:myCompany
+     a gr:BusinessEntity ;
+     rdfs:seeAlso <a href="http://www.example.com/xyz">http://www.example.com/xyz</a> ;
+     gr:hasLegalName "Hepp Industries Ltd."^^xsd:string .</p>
+
+<h3>Support for Role Attribute</h3>
+
+<p>The processor will generate RDF triples consistent with the <a href="http://www.w3.org/TR/role-attribute/" title="Role Attribute">Role Attr</a> specification.</p>
+
+<pre><code>&lt;div id="heading1" role="heading"&gt;
+  &lt;p&gt;Some contents that are a header&lt;/p&gt;
+&lt;/div&gt;
+</code></pre>
+
+<p>generates the following Turtle:</p>
+
+<pre><code>@prefix xhv: &lt;http://www.w3.org/1999/xhtml/vocab#&gt; .
+&lt;#heading1&gt; xhv:role xhv:heading.
+</code></pre>
+
+<h2>Usage</h2>
+
+<h3>Reading RDF data in the RDFa format</h3>
+
+<pre><code>graph = RDF::Graph.load("etc/doap.html", :format =&gt; :rdfa)
+</code></pre>
+
+<h3>Reading RDF data with vocabulary expansion</h3>
+
+<pre><code>graph = RDF::Graph.load("etc/doap.html", :format =&gt; :rdfa, :vocab_expansion =&gt; true)
+</code></pre>
+
+<p>or</p>
+
+<pre><code>graph = RDF::RDFa::Reader.open("etc/doap.html").expand
+</code></pre>
+
+<h3>Reading Processor Graph</h3>
+
+<pre><code>graph = RDF::Graph.load("etc/doap.html", :format =&gt; :rdfa, :rdfagraph =&gt; :processor)
+</code></pre>
+
+<h3>Reading Both Processor and Output Graphs</h3>
+
+<pre><code>graph = RDF::Graph.load("etc/doap.html", :format =&gt; :rdfa, :rdfagraph =&gt; [:output, :processor])
+</code></pre>
+
+<h3>Writing RDF data using the XHTML+RDFa format</h3>
+
+<pre><code>require 'rdf/rdfa'
+
+RDF::RDFa::Writer.open("etc/doap.html") do |writer|
+  writer &lt;&lt; graph
+end
+</code></pre>
+
+<p>Note that prefixes may be chained between Reader and Writer, so that the Writer will
+use the same prefix definitions found during parsing:</p>
+
+<pre><code>prefixes = {}
+graph = RDF::Graph.load("etc/doap.html", :prefixes =&gt; prefixes)
+puts graph.dump(:rdfa, :prefixes =&gt; prefixes)
+</code></pre>
+
+<h3>Template-based Writer</h3>
+
+<p>The RDFa writer uses <a href="http://haml-lang.com/">Haml</a> templates for code generation. This allows fully
+customizable RDFa output in a variety of host languages.
+The <a>default template</a> generates human readable HTML5
+output. A <a>minimal template</a> generates HTML, which is not
+intended for human consumption.</p>
+
+<p>To specify an alternative Haml template, consider the following:</p>
+
+<pre><code>require 'rdf/rdfa'
+
+RDF::RDFa::Writer.buffer(:haml =&gt; RDF::RDFa::Writer::MIN_HAML) &lt;&lt; graph
+</code></pre>
+
+<p>The template hash defines four Haml templates:</p>
+
+<ul>
+<li>
+<p><em>doc</em>: Document Template, takes an ordered list of _subject_s and yields each one to be rendered. From {RDF::RDFa::Writer#render_document}:</p>
+
+<p>{include:RDF::RDFa::Writer#render_document}</p>
+
+<p>This template takes locals <em>lang</em>, <em>prefix</em>, <em>base</em>, <em>title</em> in addition to <em>subjects</em>
+to create output similar to the following:</p>
+
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html prefix='xhv: http://www.w3.org/1999/xhtml/vocab#' xmlns='http://www.w3.org/1999/xhtml'&gt;
+  &lt;head&gt;
+    &lt;base href="http://example/"&gt;
+    &lt;title&gt;Document Title&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    ...
+  &lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+
+<p>Options passed to the Writer are used to supply <em>lang</em> and <em>base</em> locals.
+<em>prefix</em> is generated based upon prefixes found from the default profiles, as well
+as those provided by a previous Reader. <em>title</em> is taken from the first top-level subject
+having an appropriate title property (as defined by the <em>heading_predicates</em> option).</p>
+</li>
+<li>
+<p><em>subject</em>: Subject Template, take a <em>subject</em> and an ordered list of <em>predicate_s and yields
+each _predicate</em> to be rendered. From {RDF::RDFa::Writer#render_subject}:</p>
+
+<p>{include:RDF::RDFa::Writer#render_subject}</p>
+
+<p>The template takes locals <em>rel</em> and <em>typeof</em> in addition to <em>predicates</em> and <em>subject</em> to
+create output similar to the following:</p>
+
+<pre><code>&lt;div resource="http://example/"&gt;
+  ...
+&lt;/div&gt;
+</code></pre>
+
+<p>Note that if <em>typeof</em> is defined, in this template, it will generate a textual description.</p>
+</li>
+<li>
+<p><em>property_value</em>: Property Value Template, used for predicates having a single value; takes
+a <em>predicate</em>, and a single-valued Array of <em>objects</em>. From {RDF::RDFa::Writer#render_property}:</p>
+
+<p>{include:RDF::RDFa::Writer#render_property}</p>
+
+<p>In addition to <em>predicate</em> and <em>objects</em>, the template takes <em>inlist</em> to indicate that the
+property is part of an <code>rdf:List</code>.</p>
+
+<p>Also, if the predicate is identified as a <em>heading predicate</em> (via <em>:heading_predicates</em> option),
+it will generate a heading element, and may use the value as the document title.</p>
+
+<p>Each <em>object</em> is yielded to the calling block, and the result is rendered, unless nil.
+Otherwise, rendering depends on the type of <em>object</em>. This is useful for recursive document
+descriptions.</p>
+
+<p>Creates output similar to the following:</p>
+
+<pre><code>&lt;div class='property'&gt;
+  &lt;span class='label'&gt;
+    xhv:alternate
+  &lt;/span&gt;
+  &lt;a property='xhv:alternate' href='http://rdfa.info/feed/'&gt;http://rdfa.info/feed/&lt;/a&gt;
+&lt;/div&gt;
+</code></pre>
+
+<p>Note the use of methods defined in {RDF::RDFa::Writer} useful in rendering the output.</p>
+</li>
+<li>
+<p><em>property_values</em>: Similar to <em>property_value</em>, but for predicates having more than one value.
+Locals are identical to <em>property_values</em>, but <em>objects</em> is expected to have more than one value. Described further in {RDF::RDFa::Writer#render_property}.</p>
+
+<p>In this case, and unordered list is used for output. Creates output similar to the following:</p>
+
+<pre><code>&lt;div class='property'&gt;
+  &lt;span class='label'&gt;
+    xhv:bookmark
+  &lt;/span&gt;
+  &lt;ul rel='xhv:bookmark'&gt;
+    &lt;li&gt;
+      &lt;a href='http://rdfa.info/2009/12/12/oreilly-catalog-uses-rdfa/'&gt;
+        http://rdfa.info/2009/12/12/oreilly-catalog-uses-rdfa/
+      &lt;/a&gt;
+    &lt;/li&gt;
+      &lt;a href='http://rdfa.info/2010/05/31/new-rdfa-checker/'&gt;
+        http://rdfa.info/2010/05/31/new-rdfa-checker/
+      &lt;/a&gt;
+    &lt;/li&gt;
+  &lt;/ul&gt;
+&lt;/div&gt;
+</code></pre>
+
+<p>If <em>property_values</em> does not exist, repeated values will be replecated
+using <em>property_value</em>.</p>
+</li>
+<li>
+<p>Type-specific templates.
+To simplify generation of different output types, the
+template may contain a elements indexed by a URI. When a subject with an rdf:type
+matching that URI is found, subsequent Haml definitions will be taken from
+the associated Hash. For example:</p>
+
+<p>{
+  :document =&gt; "...",
+  :subject =&gt; "...",
+  :property_value =&gt; "...",
+  :property_values =&gt; "...",
+  RDF::URI("<a href="http://schema.org/Person%22">http://schema.org/Person"</a>) =&gt; {
+    :subject =&gt; "...",
+    :property_value =&gt; "...",
+    :property_values =&gt; "...",
+  }
+}</p>
+</li>
+</ul><h2>Dependencies</h2>
+
+<ul>
+<li>
+<a href="http://ruby-lang.org/">Ruby</a> (&gt;= 1.9) or (&gt;= 1.8.1 with [Backports][])</li>
+<li>
+<a href="http://rubygems.org/gems/rdf">RDF.rb</a> (&gt;= 0.3.1)</li>
+<li>
+<a href="https://rubygems.org/gems/haml">Haml</a> (&gt;= 3.0.0)</li>
+<li>
+<a href="https://rubygems.org/gems/htmlentities">HTMLEntities</a> ('&gt;= 4.3.0')</li>
+<li>Soft dependency on <a href="http://rubygems.org/gems/nokogiri">Nokogiri</a> (&gt;= 1.3.3)</li>
+</ul><h2>Documentation</h2>
+
+<p>Full documentation available on <a href="http://rubydoc.info/github/ruby-rdf/rdf-rdfa/frames">Rubydoc.info</a></p>
+
+<h3>Principle Classes</h3>
+
+<ul>
+<li>{RDF::RDFa::Format}
+
+<ul>
+<li>{RDF::RDFa::HTML}
+Asserts :html format, text/html mime-type and .html file extension.</li>
+<li>{RDF::RDFa::XHTML}
+Asserts :html format, application/xhtml+xml mime-type and .xhtml file extension.</li>
+<li>{RDF::RDFa::SVG}
+Asserts :svg format, image/svg+xml mime-type and .svg file extension.</li>
+</ul>
+</li>
+<li>{RDF::RDFa::Reader}
+
+<ul>
+<li>{RDF::RDFa::Reader::Nokogiri}</li>
+<li>{RDF::RDFa::Reader::REXML}</li>
+</ul>
+</li>
+<li>{RDF::RDFa::Context}</li>
+<li>{RDF::RDFa::Expansion}</li>
+<li>{RDF::RDFa::Writer}</li>
+</ul><h3>Additional vocabularies</h3>
+
+<ul>
+<li>{RDF::PTR}</li>
+<li>{RDF::RDFA}</li>
+<li>{RDF::XHV}</li>
+<li>{RDF::XML}</li>
+<li>{RDF::XSI}</li>
+</ul><h2>TODO</h2>
+
+<ul>
+<li>Add support for LibXML and REXML bindings, and use the best available</li>
+<li>Consider a SAX-based parser for improved performance</li>
+</ul><h2>Resources</h2>
+
+<ul>
+<li><a href="http://rubygems.org/gems/rdf">RDF.rb</a></li>
+<li><a href="http://rdf.greggkellogg.net/distiller">Distiller</a></li>
+<li><a href="http://rubydoc.info/github/ruby-rdf/rdf-rdfa/frames">Documentation</a></li>
+<li>[History]{file:History.markdown}</li>
+<li><a href="http://www.w3.org/TR/2012/REC-rdfa-core-20120607/" title="RDFa 1.1 Core">RDFa 1.1 Core</a></li>
+<li><a href="http://www.w3.org/TR/2012/REC-xhtml-rdfa-20120607/" title="XHTML+RDFa 1.1">XHTML+RDFa 1.1</a></li>
+<li><a href="http://rdfa.info/test-suite/" title="RDFa test suite">RDFa-test-suite</a></li>
+</ul><h2>Author</h2>
+
+<ul>
+<li>
+<a href="http://github.com/gkellogg">Gregg Kellogg</a> - <a href="http://kellogg-assoc.com/">http://kellogg-assoc.com/</a>
+</li>
+</ul><h2>Contributors</h2>
+
+<ul>
+<li><a href="http://github.com/njh">Nicholas Humfrey</a></li>
+</ul><h2>Contributing</h2>
+
+<ul>
+<li>Do your best to adhere to the existing coding conventions and idioms.</li>
+<li>Don't use hard tabs, and don't leave trailing whitespace on any line.</li>
+<li>Do document every method you add using <a href="http://yardoc.org/">YARD</a> annotations. Read the
+<a href="http://rubydoc.info/docs/yard/file/docs/GettingStarted.md">tutorial</a> or just look at the existing code for examples.</li>
+<li>Don't touch the <code>.gemspec</code>, <code>VERSION</code> or <code>AUTHORS</code> files. If you need to
+change them, do so on your private branch only.</li>
+<li>Do feel free to add yourself to the <code>CREDITS</code> file and the corresponding
+list in the the <code>README</code>. Alphabetical order applies.</li>
+<li>Do note that in order for us to merge any non-trivial changes (as a rule
+of thumb, additions larger than about 15 lines of code), we need an
+explicit <a href="http://lists.w3.org/Archives/Public/public-rdf-ruby/2010May/0013.html">public domain dedication</a> on record from you.</li>
+</ul><h2>License</h2>
+
+<p>This is free and unencumbered public domain software. For more information,
+see <a href="http://unlicense.org/">http://unlicense.org/</a> or the accompanying {file:UNLICENSE} file.</p>
+
+<h2>FEEDBACK</h2>
+
+<ul>
+<li><a href="mailto:gregg@kellogg-assoc.com">gregg@kellogg-assoc.com</a></li>
+<li><a href="http://rubygems.org/rdf-rdfa">http://rubygems.org/rdf-rdfa</a></li>
+<li><a href="http://github.com/ruby-rdf/rdf-rdfa">http://github.com/ruby-rdf/rdf-rdfa</a></li>
+<li><a href="http://lists.w3.org/Archives/Public/public-rdf-ruby/">http://lists.w3.org/Archives/Public/public-rdf-ruby/</a></li>
+</ul>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Rdf-rdfa maintained by <a href="https://github.com/ruby-rdf">ruby-rdf</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
