@@ -307,6 +307,10 @@ This is related to <a href="http://www.w3.org/2010/02/rdfa/track/issues/113">RDF
 &lt;#heading1&gt; xhv:role xhv:heading.
 </code></pre>
 
+<h3>Support for microdata</h3>
+
+<p>The RDFa reader will call out to <code>RDF::Microdata::Reader</code>, if an <code>@itemscope</code> attribute is detected, and the microdata reader is loaded. This avoids a common problem when pages contain both microdata and RDFa, and only one processor is run.</p>
+
 <h2>Usage</h2>
 
 <h3>Reading RDF data in the RDFa format</h3>
